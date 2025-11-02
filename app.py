@@ -16,13 +16,21 @@ from langchain.schema import Document
 from werkzeug.utils import secure_filename
 from docx import Document as DocxDocument
 from dotenv import load_dotenv
+import google.generativeai as genai
 
 # Load environment variables
 load_dotenv()
 
 # Configuration
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-MODEL_NAME = os.getenv("MODEL_NAME", "llama3.2:3b")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+MODEL_NAME = os.getenv("MODEL_NAME", "gemini-2.0-flash")
+
+# Configure Gemini
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    gemini_model = genai.GenerativeModel(MODEL_NAME)
+else:
+    print("WARNING: GEMINI_API_KEY not set. Chatbot functionality will be limited.")
 UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "vector_stores")
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'docx', 'json'}
 DEFAULT_SYSTEM_PROMPT = (
@@ -367,30 +375,35 @@ def query_llm_with_session(session_id, query, conversation_id=None, custom_promp
     
     full_prompt = "\n".join(prompt_parts)
     
-    # Query Ollama with extended timeout
+    # Query Gemini API
     try:
-        response = requests.post(OLLAMA_URL, json={
-            "model": MODEL_NAME,
-            "prompt": full_prompt,
-            "stream": False,
-            "options": {
-                "temperature": 0.1,  # Very focused/deterministic responses
-                "top_k": 40,
-                "top_p": 0.8,  # More conservative word selection
-                "num_ctx": 32768  # Large context window for llama3.2
-            }
-        }, timeout=120)  # Increased timeout for larger contexts
+        if not GEMINI_API_KEY:
+            return "**Configuration Error**: GEMINI_API_KEY not set. Please configure your Gemini API key."
         
-        if response.status_code == 200:
-            return response.json().get("response", "No response received.")
+        # Generate response using Gemini
+        response = gemini_model.generate_content(
+            full_prompt,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.1,  # Very focused/deterministic responses
+                top_k=40,
+                top_p=0.8,  # More conservative word selection
+                max_output_tokens=2048,
+            )
+        )
+        
+        if response and response.text:
+            return response.text
         else:
-            return f"**Ollama Error ({response.status_code})**: The local AI server returned an error. Please ensure Ollama is running with the `{MODEL_NAME}` model installed."
-    except requests.exceptions.Timeout:
-        return "**Timeout Error**: The AI model is taking longer than expected. This often happens on the first request when the model needs to load into memory. Please try again - subsequent requests should be faster."
-    except requests.exceptions.ConnectionError:
-        return f"**Connection Error**: Cannot connect to Ollama server at {OLLAMA_URL}. Please start Ollama by running `ollama serve` in your terminal, then ensure the `{MODEL_NAME}` model is installed with `ollama pull {MODEL_NAME}`."
+            return "No response received from Gemini."
+            
     except Exception as e:
-        return f"**AI Service Error**: {str(e)}"
+        error_msg = str(e)
+        if "API_KEY" in error_msg.upper():
+            return f"**API Key Error**: Invalid or missing Gemini API key. Please check your configuration."
+        elif "QUOTA" in error_msg.upper() or "RATE" in error_msg.upper():
+            return f"**Rate Limit Error**: API quota exceeded. Please try again later or upgrade your plan."
+        else:
+            return f"**AI Service Error**: {error_msg}"
 
 # API Routes
 
@@ -400,39 +413,45 @@ def index():
 
 @app.route("/api/health", methods=["GET"])
 def health_check():
-    """Check if Ollama is running and model is available"""
+    """Check if Gemini API is configured and accessible"""
     try:
-        # Test connection to Ollama
-        response = requests.get("http://localhost:11434/api/tags", timeout=5)
-        if response.status_code == 200:
-            models = response.json().get("models", [])
-            model_names = [model.get("name", "") for model in models]
-            
-            llama3_available = any(MODEL_NAME in name for name in model_names)
-            
+        if not GEMINI_API_KEY:
             return jsonify({
-                "ollama_running": True,
-                "model_available": llama3_available,
-                "available_models": model_names,
-                "target_model": MODEL_NAME,
-                "message": "Ollama is running!" if llama3_available else f"Ollama is running but {MODEL_NAME} model not found. Run: ollama pull {MODEL_NAME}"
-            })
-        else:
-            return jsonify({
-                "ollama_running": False,
-                "model_available": False,
-                "message": "Ollama server responded with error"
+                "gemini_configured": False,
+                "api_accessible": False,
+                "model": MODEL_NAME,
+                "message": "Gemini API key not configured. Please set GEMINI_API_KEY environment variable."
             }), 503
-    except requests.exceptions.ConnectionError:
-        return jsonify({
-            "ollama_running": False,
-            "model_available": False,
-            "message": "Ollama is not running. Start it with: ollama serve"
-        }), 503
+        
+        # Try a simple test call to Gemini
+        try:
+            test_model = genai.GenerativeModel(MODEL_NAME)
+            response = test_model.generate_content(
+                "Say 'OK' if you're working.",
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0,
+                    max_output_tokens=10,
+                )
+            )
+            
+            return jsonify({
+                "gemini_configured": True,
+                "api_accessible": True,
+                "model": MODEL_NAME,
+                "message": "Gemini API is working correctly!"
+            })
+        except Exception as api_error:
+            return jsonify({
+                "gemini_configured": True,
+                "api_accessible": False,
+                "model": MODEL_NAME,
+                "message": f"Gemini API error: {str(api_error)}"
+            }), 503
+            
     except Exception as e:
         return jsonify({
-            "ollama_running": False,
-            "model_available": False,
+            "gemini_configured": False,
+            "api_accessible": False,
             "message": f"Health check failed: {str(e)}"
         }), 503
 
