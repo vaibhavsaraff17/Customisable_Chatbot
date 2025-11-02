@@ -522,7 +522,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 👤 Authors
 
 - **Vaibhav Saraff** - [@vaibhavsaraff17](https://github.com/vaibhavsaraff17)
-- **Tushar Saraff** - Contributor
 
 ## 🙏 Acknowledgments
 
@@ -536,7 +535,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: [GitHub Issues](https://github.com/vaibhavsaraff17/Customisable_Chatbot/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/vaibhavsaraff17/Customisable_Chatbot/discussions)
-- **Email**: vaibhav.saraff@example.com
+- **Email**: vaibhav024saraff@gmail.com
 
 ## 🗺️ Roadmap
 
