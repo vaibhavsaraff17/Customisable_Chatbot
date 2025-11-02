@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_enhanced.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Add marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <!-- Dark Mode Toggle -->
+    <button id="dark-mode-toggle" title="Toggle dark mode" style="position: fixed; top: 18px; right: 24px; z-index: 2000; background: rgba(255,255,255,0.7); border: none; border-radius: 50%; width: 40px; height: 40px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; transition: background 0.2s;">
+        <i class="fas fa-moon" id="dark-mode-icon"></i>
+    </button>
+    <div class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-robot"></i>
+                    <h2>CustomBot</h2>
+                </div>
+            </div>
+            
+            <div class="nav-menu">
+                <a href="#" class="nav-item active" data-section="setup">
+                    <i class="fas fa-cog"></i>
+                    <span>Setup</span>
+                </a>
+                <a href="#" class="nav-item" data-section="documents">
+                    <i class="fas fa-file-upload"></i>
+                    <span>Documents</span>
+                </a>
+                <a href="#" class="nav-item" data-section="prompts">
+                    <i class="fas fa-edit"></i>
+                    <span>Instructions</span>
+                </a>
+                <a href="#" class="nav-item" data-section="chat">
+                    <i class="fas fa-comments"></i>
+                    <span>Chat</span>
+                </a>
+                <a href="#" class="nav-item" data-section="history">
+                    <i class="fas fa-history"></i>
+                    <span>History</span>
+                </a>
+            </div>
+            
+            <div class="session-info">
+                <div class="session-status">
+                    <div class="status-indicator offline" id="status-indicator"></div>
+                    <span id="session-status-text">No Session</span>
+                </div>
+                <div class="session-id" id="session-id-display">-</div>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Setup Section -->
+            <section id="setup-section" class="content-section active">
+                <div class="section-header">
+                    <h1>Session Setup</h1>
+                    <p>Create a new chatbot session or load an existing one</p>
+                </div>
+                
+                <div class="setup-cards">
+                    <div class="setup-card">
+                        <div class="card-header">
+                            <i class="fas fa-plus-circle"></i>
+                            <h3>Create New Session</h3>
+                        </div>
+                        <div class="card-content">
+                            <form id="create-session-form">
+                                <div class="form-group">
+                                    <label for="user-description">Bot Description</label>
+                                    <input type="text" id="user-description" placeholder="e.g., Study Bot, Support Assistant">
+                                </div>
+                                <div class="form-group">
+                                    <label for="use-case">Use Case</label>
+                                    <select id="use-case">
+                                        <option value="study">Study Assistant</option>
+                                        <option value="support">Customer Support</option>
+                                        <option value="technical">Technical Help</option>
+                                        <option value="general">General Assistant</option>
+                                        <option value="custom">Custom</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-rocket"></i>
+                                    Create Session
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="setup-card">
+                        <div class="card-header">
+                            <i class="fas fa-folder-open"></i>
+                            <h3>Load Existing Session</h3>
+                        </div>
+                        <div class="card-content">
+                            <form id="load-session-form">
+                                <div class="form-group">
+                                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                                        <label for="session-dropdown">Select Session</label>
+                                        <button type="button" id="refresh-sessions-btn" class="btn-icon" title="Refresh sessions list">
+                                            <i class="fas fa-sync"></i>
+                                        </button>
+                                    </div>
+                                    <select id="session-dropdown">
+                                        <option value="">Loading sessions...</option>
+                                    </select>
+                                    <div id="session-details" class="session-details" style="display: none;">
+                                        <div class="session-info">
+                                            <span class="info-item"><i class="fas fa-file"></i> <span id="selected-docs-count">0</span> documents</span>
+                                            <span class="info-item"><i class="fas fa-database"></i> <span id="selected-vector-status">Not ready</span></span>
+                                            <span class="info-item"><i class="fas fa-calendar"></i> Created: <span id="selected-created-date">-</span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-secondary" id="load-session-btn" disabled>
+                                    <i class="fas fa-download"></i>
+                                    Load Session
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="session-overview" id="session-overview" style="display: none;">
+                    <h3>Session Overview</h3>
+                    <div class="overview-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="documents-count">0</div>
+                                <div class="stat-label">Documents</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-database"></i>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="vector-store-status">Not Ready</div>
+                                <div class="stat-label">Vector Store</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-comment-dots"></i>
+                            </div>
+                            <div class="stat-info">
+                                <div class="stat-value" id="prompt-status">Default</div>
+                                <div class="stat-label">Instructions</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Documents Section -->
+            <section id="documents-section" class="content-section">
+                <div class="section-header">
+                    <h1>Document Management</h1>
+                    <p>Upload and manage your training documents</p>
+                </div>
+                
+                <div class="upload-area">
+                    <div class="upload-zone" id="upload-zone">
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <div class="upload-text">
+                            <h3>Drag & Drop Files Here</h3>
+                            <p>or <span class="upload-link">browse files</span></p>
+                            <small>Supported: PDF, DOCX, TXT, JSON (Max 16MB each)</small>
+                        </div>
+                        <input type="file" id="file-input" multiple accept=".pdf,.docx,.txt,.json" style="display: none;">
+                    </div>
+                    
+                    <div class="upload-progress" id="upload-progress" style="display: none;">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progress-fill"></div>
+                        </div>
+                        <div class="progress-text" id="progress-text">Uploading...</div>
+                    </div>
+                </div>
+                
+                <div class="documents-list">
+                    <div class="list-header">
+                        <h3>Uploaded Documents</h3>
+                        <button class="btn btn-outline" id="refresh-documents">
+                            <i class="fas fa-sync-alt"></i>
+                            Refresh
+                        </button>
+                    </div>
+                    <div class="documents-table" id="documents-table">
+                        <div class="empty-state">
+                            <i class="fas fa-folder-open"></i>
+                            <p>No documents uploaded yet</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Prompts Section -->
+            <section id="prompts-section" class="content-section">
+                <div class="section-header">
+                    <h1>Custom Instructions</h1>
+                    <p>Configure your chatbot's behavior and personality</p>
+                </div>
+                
+                <div class="prompt-editor">
+                    <div class="editor-tabs">
+                        <button class="tab-btn active" data-tab="custom">Custom Prompt</button>
+                        <button class="tab-btn" data-tab="templates">Templates</button>
+                    </div>
+                    
+                    <div class="tab-content active" id="custom-tab">
+                        <div class="form-group">
+                            <label for="custom-prompt">Custom Instructions</label>
+                            <textarea id="custom-prompt" rows="10" placeholder="Enter your custom instructions here...
+
+Example:
+You are a helpful study assistant. Your role is to help students understand their course materials by:
+- Explaining complex concepts in simple terms
+- Providing examples and analogies
+- Breaking down problems into manageable steps
+- Encouraging critical thinking
+
+Always be patient, encouraging, and thorough in your explanations."></textarea>
+                        </div>
+                        
+                        <div class="prompt-actions">
+                            <button class="btn btn-primary" id="save-prompt">
+                                <i class="fas fa-save"></i>
+                                Save Instructions
+                            </button>
+                            <button class="btn btn-outline" id="test-prompt">
+                                <i class="fas fa-play"></i>
+                                Test Prompt
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="tab-content" id="templates-tab">
+                        <div class="template-grid">
+                            <div class="template-card" data-template="study">
+                                <h4>Study Assistant</h4>
+                                <p>Helps students understand course materials and concepts</p>
+                                <button class="btn btn-sm">Use Template</button>
+                            </div>
+                            <div class="template-card" data-template="support">
+                                <h4>Customer Support</h4>
+                                <p>Professional customer service assistant</p>
+                                <button class="btn btn-sm">Use Template</button>
+                            </div>
+                            <div class="template-card" data-template="technical">
+                                <h4>Technical Help</h4>
+                                <p>Technical documentation and troubleshooting assistant</p>
+                                <button class="btn btn-sm">Use Template</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="prompt-preview" id="prompt-preview" style="display: none;">
+                    <h3>Prompt Test</h3>
+                    <div class="preview-chat">
+                        <div class="preview-message user">
+                            <span>Test question: How does this work?</span>
+                        </div>
+                        <div class="preview-message bot" id="preview-response">
+                            <span>Testing...</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Chat Section -->
+            <section id="chat-section" class="content-section">
+                <div class="section-header">
+                    <div style="flex: 1;">
+                        <h1>Chat Interface</h1>
+                        <p>Test your chatbot and have conversations</p>
+                    </div>
+                    <button class="btn btn-outline" id="reset-chat-btn" style="display: none;">
+                        <i class="fas fa-redo"></i>
+                        Reset Chat
+                    </button>
+                </div>
+                
+                <div class="chat-container">
+                    <div class="chat-messages" id="chat-messages">
+                        <div class="welcome-message">
+                            <div class="bot-avatar">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div class="message-content">
+                                <h3>Welcome to your AI Assistant!</h3>
+                                <p>I'm ready to help you with questions based on your uploaded documents and custom instructions.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-input-area">
+                        <div class="input-container">
+                            <input type="text" id="chat-input" placeholder="Type your message here..." disabled>
+                            <button id="send-button" class="send-btn" disabled>
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <div class="chat-status" id="chat-status">
+                            Please create or load a session to start chatting
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- History Section -->
+            <section id="history-section" class="content-section">
+                <div class="section-header">
+                    <h1>Conversation History</h1>
+                    <p>View and manage your chat conversations</p>
+                </div>
+                
+                <div class="history-controls">
+                    <button class="btn btn-outline" id="refresh-history">
+                        <i class="fas fa-sync-alt"></i>
+                        Refresh
+                    </button>
+                    <button class="btn btn-danger" id="clear-all-history">
+                        <i class="fas fa-trash"></i>
+                        Clear All
+                    </button>
+                </div>
+                
+                <div class="conversations-list" id="conversations-list">
+                    <div class="empty-state">
+                        <i class="fas fa-comments"></i>
+                        <p>No conversations yet</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Processing...</p>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast" id="toast">
+        <div class="toast-content">
+            <i class="toast-icon"></i>
+            <span class="toast-message"></span>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+</body>
+</html>
+

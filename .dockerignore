@@ -1,0 +1,67 @@
+# Docker ignore file - excludes files from Docker build context
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Database
+local_db/*.json
+!local_db/*.json.example
+
+# Vector Stores
+vector_stores/*
+!vector_stores/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Tests
+tests/
+.pytest_cache/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Backup
+*.bak
+*.backup
+
+# Temporary
+tmp/
+temp/
+*.tmp

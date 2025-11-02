@@ -1,0 +1,55 @@
+"""
+Configuration Example File
+Copy this to config.py and update with your actual values
+"""
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class Config:
+    """Base configuration"""
+    
+    # Flask Configuration
+    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+    DEBUG = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
+    
+    # MongoDB Configuration
+    MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017/')
+    DATABASE_NAME = os.getenv('DATABASE_NAME', 'enhanced_chatbot')
+    
+    # Ollama Configuration
+    OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434/api/generate')
+    MODEL_NAME = os.getenv('MODEL_NAME', 'llama3.2:3b')
+    
+    # Upload Configuration
+    UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', 'vector_stores')
+    MAX_CONTENT_LENGTH = int(os.getenv('MAX_CONTENT_LENGTH', 104857600))  # 100MB
+    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'docx', 'json'}
+    
+    # Server Configuration
+    HOST = os.getenv('HOST', '0.0.0.0')
+    PORT = int(os.getenv('PORT', 5002))
+
+class DevelopmentConfig(Config):
+    """Development configuration"""
+    DEBUG = True
+
+class ProductionConfig(Config):
+    """Production configuration"""
+    DEBUG = False
+    
+class TestingConfig(Config):
+    """Testing configuration"""
+    TESTING = True
+    MONGO_URI = 'mongodb://localhost:27017/'
+    DATABASE_NAME = 'enhanced_chatbot_test'
+
+# Configuration dictionary
+config = {
+    'development': DevelopmentConfig,
+    'production': ProductionConfig,
+    'testing': TestingConfig,
+    'default': DevelopmentConfig
+}

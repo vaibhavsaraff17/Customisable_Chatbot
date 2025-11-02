@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:6
+    container_name: chatbot_mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-changeme}
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    restart: unless-stopped
+    networks:
+      - chatbot-network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: chatbot_ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
+    networks:
+      - chatbot-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    # Note: GPU support requires nvidia-docker
+
+  chatbot:
+    build: .
+    container_name: chatbot_app
+    depends_on:
+      - mongodb
+      - ollama
+    environment:
+      MONGO_URI: mongodb://admin:${MONGO_PASSWORD:-changeme}@mongodb:27017/
+      OLLAMA_URL: http://ollama:11434/api/generate
+      MODEL_NAME: ${MODEL_NAME:-llama3.2:3b}
+      FLASK_ENV: ${FLASK_ENV:-production}
+    volumes:
+      - ./vector_stores:/app/vector_stores
+      - ./logs:/app/logs
+      - ./local_db:/app/local_db
+    ports:
+      - "5002:5002"
+    restart: unless-stopped
+    networks:
+      - chatbot-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5002/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  nginx:
+    image: nginx:alpine
+    container_name: chatbot_nginx
+    depends_on:
+      - chatbot
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./static:/app/static:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: unless-stopped
+    networks:
+      - chatbot-network
+
+volumes:
+  mongodb_data:
+    driver: local
+  ollama_data:
+    driver: local
+
+networks:
+  chatbot-network:
+    driver: bridge
