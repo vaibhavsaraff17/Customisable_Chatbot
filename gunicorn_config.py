@@ -29,7 +29,7 @@ proc_name = 'enhanced-chatbot'
 
 # Server Mechanics
 daemon = False
-pidfile = 'logs/gunicorn.pid'
+pidfile = None  # Don't use pidfile on Render
 user = None
 group = None
 tmp_upload_dir = None
